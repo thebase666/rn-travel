@@ -18,17 +18,6 @@ function Layout() {
       />
 
       <Tabs.Screen
-        name="search"
-        options={{
-          title: "Search",
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <FontAwesome name="search" color={color} size={size} />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
