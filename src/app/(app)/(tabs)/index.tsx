@@ -15,7 +15,6 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 const IndexPage = () => {
-  // 设置默认值
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
 
@@ -77,19 +76,27 @@ const IndexPage = () => {
 
   const handlePeopleChange = (text: string) => {
     const digits = text.replace(/[^0-9]/g, "");
-    setPeopleInput(digits);
+    const n = parseInt(digits, 10);
+
+    if (!digits) {
+      setPeopleInput(""); // 保持空
+    } else if (n <= 1) {
+      setPeopleInput("1"); // 最小值限制
+    } else {
+      setPeopleInput(String(n));
+    }
   };
 
   const handleBudgetChange = (text: string) => {
-    // 只允许输入数字，移除所有非数字字符
-    let cleaned = text.replace(/[^0-9]/g, "");
-    // 移除前导零，但保留单个0
-    cleaned = cleaned.replace(/^0+(\d)/, "$1");
-    // 如果输入为空，保持为空字符串
-    if (cleaned === "") {
-      setBudgetInput("");
+    const digits = text.replace(/[^0-9]/g, "");
+    const n = parseInt(digits, 10);
+
+    if (!digits) {
+      setBudgetInput(""); // 保持空
+    } else if (n <= 1) {
+      setBudgetInput("1"); // 最小值限制
     } else {
-      setBudgetInput(cleaned);
+      setBudgetInput(String(n));
     }
   };
 
@@ -225,6 +232,7 @@ const IndexPage = () => {
                     value={startDate || new Date()}
                     mode="date"
                     display="default"
+                    minimumDate={new Date()}
                     onChange={onChangeStart}
                     style={{ alignSelf: "flex-start" }}
                   />
