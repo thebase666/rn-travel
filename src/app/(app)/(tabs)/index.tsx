@@ -93,7 +93,7 @@ const IndexPage = () => {
     }
   };
 
-  const getAiAgent = () => {
+  const getAiPlan = () => {
     setError(null);
     if (!city.trim()) {
       setError("Please enter a destination city.");
@@ -117,7 +117,7 @@ const IndexPage = () => {
     }
 
     router.push({
-      pathname: "/aiagent",
+      pathname: "/aiplan",
       params: {
         city: city.trim(),
         budget: String(budget),
@@ -275,7 +275,7 @@ const IndexPage = () => {
         {/* Action Buttons */}
         <View className="flex-row gap-4 mb-6">
           <TouchableOpacity
-            onPress={getAiAgent}
+            onPress={getAiPlan}
             disabled={!isReady}
             className={`flex-1 py-4 rounded-2xl items-center shadow-lg ${
               isReady

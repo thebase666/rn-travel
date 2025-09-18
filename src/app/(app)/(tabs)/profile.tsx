@@ -49,7 +49,6 @@ export default function ProfilePage() {
     return "User";
   };
 
-  // 获取用户邮箱
   const getUserEmail = () => {
     return user?.primaryEmailAddress?.emailAddress || "No email available";
   };
@@ -208,7 +207,7 @@ export default function ProfilePage() {
 
           {/* App Version */}
           <View className="mt-8 items-center">
-            <Text className="text-gray-400 text-sm">Weather App v1.0.0</Text>
+            <Text className="text-gray-400 text-sm">AI travel App v1.0.0</Text>
           </View>
         </View>
       </ScrollView>

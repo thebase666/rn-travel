@@ -20,12 +20,9 @@ export default function Layout() {
       <Stack.Protected guard={isSignedIn}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
-          name="weather"
+          name="aiplan"
           options={{
             headerShown: false,
-            presentation: "modal",
-            gestureEnabled: true,
-            animationTypeForReplace: "push",
           }}
         />
       </Stack.Protected>
