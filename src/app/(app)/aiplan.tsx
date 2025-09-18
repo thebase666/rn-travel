@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   ScrollView,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Markdown, { MarkdownIt } from "react-native-markdown-display";
@@ -16,17 +17,10 @@ const AiPlanPage = () => {
   const city = String(params.city || "");
   const budget = params.budget ? Number(params.budget) : null;
   const people = params.people ? Number(params.people) : null;
-  const startDateIso = String(params.startDate || "");
-  const endDateIso = String(params.endDate || "");
-
-  const startDate = useMemo(
-    () => (startDateIso ? new Date(startDateIso) : null),
-    [startDateIso]
-  );
-  const endDate = useMemo(
-    () => (endDateIso ? new Date(endDateIso) : null),
-    [endDateIso]
-  );
+  const startDate = params.startDate
+    ? new Date(params.startDate as string)
+    : null;
+  const endDate = params.endDate ? new Date(params.endDate as string) : null;
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,38 +29,106 @@ const AiPlanPage = () => {
   const router = useRouter();
 
   useEffect(() => {
-    let mounted = true;
-    const fetchPlan = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const res = await fetch("/api/ai", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ city, budget, people, startDate, endDate }),
-        });
-        const text = await res.text();
-        if (!res.ok) {
-          throw new Error(
-            `AI API error ${res.status} ${res.statusText} - ${text}`
-          );
-        }
-        const json = text ? JSON.parse(text) : {};
-        if (!mounted) return;
-        setContent(String(json.message || ""));
-      } catch (e: any) {
-        if (!mounted) return;
-        setError(e?.message || "Failed to get AI plan");
-      } finally {
-        if (mounted) setIsLoading(false);
-      }
-    };
-    fetchPlan();
-    return () => {
-      mounted = false;
-    };
-  }, [city, budget, people, startDateIso, endDateIso]);
+    if (city && budget && people && startDate && endDate) {
+      fetchPlan(city, budget, people, startDate, endDate).catch((error) => {
+        console.error("Error parsing data:", error);
+        router.back();
+      });
+    }
+    // 👇 空依赖数组，只在初始挂载时运行一次
+  }, []);
 
+  const fetchPlan = async (
+    city: string,
+    budget: number,
+    people: number,
+    startDate: Date,
+    endDate: Date
+  ) => {
+    if (!city || !budget || !people || !startDate || !endDate) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ city, budget, people, startDate, endDate }),
+      });
+
+      const text = await res.text(); // 先取 text，通用性更强
+      if (!res.ok) {
+        throw new Error(
+          `AI API error ${res.status} ${res.statusText} - ${text}`
+        );
+      }
+
+      // 尝试把返回的 text 解析成 JSON（有些接口返回 {"message": "md string"}）
+      let md = text;
+      try {
+        const parsed = JSON.parse(text);
+        // 如果解析出来是对象且有 message 字段，取 message
+        if (parsed && typeof parsed === "object" && parsed.message) {
+          md = parsed.message;
+        } else if (typeof parsed === "string") {
+          md = parsed;
+        } else {
+          // parsed 是对象但没有 message，则把整个对象转成字符串（可选）
+          md = JSON.stringify(parsed, null, 2);
+        }
+      } catch (e) {
+        // parse 失败，说明返回就是纯文本 markdown，直接使用 text
+        md = text;
+      }
+
+      // 如果服务器把换行做了双重转义（"\\n"），把它变成真实换行
+      md = md.replace(/\\n/g, "\n");
+
+      // 最终确保是字符串再 set
+      setContent(String(md));
+    } catch (e: any) {
+      setError(e?.message || "Failed to get AI plan");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // const fetchPlan = async (
+  //   city: string,
+  //   budget: number,
+  //   people: number,
+  //   startDate: Date,
+  //   endDate: Date
+  // ) => {
+  //   if (!city || !budget || !people || !startDate || !endDate) {
+  //     setIsLoading(false);
+  //     return;
+  //   }
+  //   try {
+  //     const res = await fetch("/api/ai", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({ city, budget, people, startDate, endDate }),
+  //     });
+  //     const data = await res.json();
+  //     console.log("data", data);
+
+  //     if (res.ok) {
+  //       setContent(data);
+  //     } else {
+  //       Alert.alert("Error", "Failed to fetch data");
+  //     }
+  //   } catch (e: any) {
+  //     setError(e?.message || "Failed to get AI plan");
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+  console.log("content", content);
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-gray-50">
@@ -134,8 +196,8 @@ const AiPlanPage = () => {
 
       {/* Content */}
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        <View className="p-6">
-          <View className="bg-white rounded-3xl shadow-lg shadow-gray-200 p-6">
+        <View className="p-4">
+          <View className="bg-white rounded-3xl shadow-lg shadow-gray-200 p-4">
             <View className="flex-row items-center mb-4">
               <View className="w-8 h-8 bg-green-100 rounded-full items-center justify-center mr-3">
                 <Ionicons name="map" size={16} color="#10B981" />
@@ -154,71 +216,55 @@ const AiPlanPage = () => {
               style={{
                 body: {
                   fontSize: 16,
-                  lineHeight: 24,
+                  lineHeight: 26,
                   color: "#374151",
                 },
                 heading1: {
-                  fontSize: 24,
+                  fontSize: 28,
                   fontWeight: "bold",
                   color: "#1F2937",
-                  marginTop: 24,
-                  marginBottom: 16,
+                  marginVertical: 12,
                 },
                 heading2: {
-                  fontSize: 20,
-                  fontWeight: "bold",
-                  color: "#1F2937",
-                  marginTop: 20,
-                  marginBottom: 12,
-                },
-                heading3: {
-                  fontSize: 18,
-                  fontWeight: "bold",
-                  color: "#1F2937",
+                  fontSize: 22,
+                  fontWeight: "600",
+                  color: "#2563EB", // 蓝色区分二级标题
                   marginTop: 16,
                   marginBottom: 8,
                 },
-                paragraph: {
-                  marginBottom: 12,
-                  color: "#374151",
+                heading3: {
+                  fontSize: 18,
+                  fontWeight: "500",
+                  color: "#10B981", // 绿色用于小标题（比如 Day 1）
+                  marginTop: 12,
+                  marginBottom: 6,
                 },
                 list_item: {
-                  marginBottom: 8,
+                  marginBottom: 6,
+                  fontSize: 15,
+                  lineHeight: 22,
                   color: "#374151",
                 },
                 strong: {
                   fontWeight: "bold",
-                  color: "#1F2937",
+                  color: "#111827",
                 },
-                em: {
-                  fontStyle: "italic",
-                  color: "#6B7280",
-                },
-                code_inline: {
-                  backgroundColor: "#F3F4F6",
-                  paddingHorizontal: 4,
-                  paddingVertical: 2,
-                  borderRadius: 4,
-                  fontSize: 14,
-                  color: "#1F2937",
-                },
-                blockquote: {
-                  backgroundColor: "#F9FAFB",
-                  borderLeftWidth: 4,
-                  borderLeftColor: "#3B82F6",
-                  paddingLeft: 16,
-                  paddingVertical: 12,
+                table: {
+                  borderWidth: 1,
+                  borderColor: "#E5E7EB",
                   marginVertical: 12,
-                  borderRadius: 8,
                 },
-                hr: {
-                  backgroundColor: "#E5E7EB",
-                  height: 1,
-                  marginVertical: 16,
+                th: {
+                  backgroundColor: "#F3F4F6",
+                  fontWeight: "bold",
+                  padding: 6,
+                },
+                td: {
+                  padding: 6,
                 },
               }}
             >
-              {content || "No content available."}
+              {content}
             </Markdown>
           </View>
         </View>
